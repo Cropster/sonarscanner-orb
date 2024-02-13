@@ -1,0 +1,51 @@
+version: 2.1
+description: "This orb measures code quality using SonarQube server and fails the build when the predefined quality gate has broken. Default sonarScanner is used to execute analysis. The script runs with zero tolerancy in terms of errors. If any error found during the analysis the build will fail."
+commands:
+  launch-analysis:
+    description: Check Code Quality
+    parameters:
+      sonar_server_url:
+        type: string
+        description: "URL of your SonarQube server. e.g. https://my.sonarqube.server"
+        default: "$SONAR_SERVER_URL"
+      sonar_auth_key:
+        description: "Authentication key to access SonarQube, should be stored in a CCI environment variable"
+        type: string
+        default: "$SONAR_AUTH_TOKEN"
+      source_code_path:
+        description: "Location of files to be analysed"
+        type: string
+        default: "."
+      sonar_project_key:
+          description: "The name of the SonarQube project that the sourcecode relates to."
+          type: string
+      enable_debugging:
+          description: "Enable debugging output for the sonarscanning cli"
+          type: bool
+          default: false
+    steps:
+      - restore_cache:
+          keys:
+            - sonar-scanner
+      - run:
+          name: Install SonarQube scanner cli
+          command: |
+            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006.zip -O sonar-scanner-cli.zip
+            unzip sonar-scanner-cli.zip
+            rm sonar-scanner-cli.zip
+
+      - run:
+          name: Run Sonarscanner
+          command: |
+            export SONAR_SCANNER_OPTS="-Xmx512m"
+            eval ./sonar-scanner-5.0.1.3006/bin/sonar-scanner \
+            -Dsonar.host.url=<< parameters.sonar_server_url >> \
+            -Dsonar.sources=<< parameters.source_code_path >> \
+            -Dsonar.login=<< parameters.sonar_auth_key >> \
+            -Dsonar.projectKey=<< parameters.sonar_project_key \
+            -Dsonar.debug=<< parameters.enable_debugging >>
+
+      - save_cache:
+          key: sonar-scanner
+          paths:
+            - .
